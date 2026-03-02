@@ -39,11 +39,8 @@ export const submitCode = async (req: BunRequest) => {
       where: { problemId: body.problemId },
     });
 
-    // ── Container 1: Compile ─────────────────────────────────────────────────
-    // :z relabels the volume for SELinux (safe to use on non-SELinux systems too)
-    // chmod +x ensures the binary is executable when run from a mounted volume
     const compile =
-      await $`docker run --rm -v ${workDir}:/code:z ${DOCKER_IMAGE} sh -c "g++ /code/main.cpp -o /code/main && chmod +x /code/main"`.quiet();
+      await $`sudo docker run --rm -v ${workDir}:/code:z ${DOCKER_IMAGE} sh -c "g++ /code/main.cpp -o /code/main && chmod +x /code/main"`.quiet();
 
     if (compile.exitCode !== 0) {
       return Response.json({
@@ -52,14 +49,10 @@ export const submitCode = async (req: BunRequest) => {
       });
     }
 
-    // ── Write all test inputs to files ───────────────────────────────────────
     for (let i = 0; i < tests.length; i++) {
       await Bun.write(path.join(workDir, `input_${i}.txt`), tests[i].input);
     }
 
-    // Build a sh one-liner that runs every test with an individual timeout.
-    // `timeout` exits with 124 on TLE. stdout, stderr, and exit codes are
-    // written to files so we can inspect them after the container exits.
     const timeoutSecs = Math.floor(EXECUTION_TIMEOUT_MS / 1000);
     const shellScript = tests
       .map(
@@ -68,10 +61,8 @@ export const submitCode = async (req: BunRequest) => {
       )
       .join("; ");
 
-    // ── Container 2: Run all test cases in one container ─────────────────────
-    await $`docker run --rm -i --network none --memory 256m --cpus 0.5 -v ${workDir}:/code:z ${DOCKER_IMAGE} sh -c ${shellScript}`.quiet();
+    await $`sudo docker run --rm -i --network none --memory 256m --cpus 0.5 -v ${workDir}:/code:z ${DOCKER_IMAGE} sh -c ${shellScript}`.quiet();
 
-    // ── Compare outputs on the host ──────────────────────────────────────────
     for (let i = 0; i < tests.length; i++) {
       const test = tests[i];
       const exitCode = parseInt(
@@ -120,11 +111,10 @@ export const submitCode = async (req: BunRequest) => {
       error,
     });
   } finally {
-    // Always clean up the temp directory
     try {
       fs.rmSync(workDir, { recursive: true, force: true });
     } catch {
-      // ignore cleanup errors
+
     }
   }
 };
