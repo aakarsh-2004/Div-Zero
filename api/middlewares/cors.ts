@@ -1,6 +1,6 @@
 import { config } from "../config/config";
 
-const origin = config.frontendUrl || "http://localhost:5173";
+const origin = (config.frontendUrl || "http://localhost:5173").replace(/\/$/, "");
 
 export const CORS_HEADERS = {
     "Access-Control-Allow-Origin": origin,
