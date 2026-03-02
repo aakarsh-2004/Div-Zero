@@ -114,6 +114,7 @@ export const submitCode = async (req: BunRequest) => {
       status: "All tests passed!",
     });
   } catch (error) {
+    console.log("Error during code submission:", error);
     return Response.json({
       message: "Error while submitting code",
       error,
