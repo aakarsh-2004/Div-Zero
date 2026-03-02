@@ -1,4 +1,6 @@
-export const API_BASE = 'http://localhost:3000/api';
+import { config } from './config';
+
+export const API_BASE = config.apiBase;
 
 export type ApiResponse<T = unknown> =
   | { ok: true; data: T }
