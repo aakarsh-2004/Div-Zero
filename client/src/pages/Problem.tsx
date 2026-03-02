@@ -17,6 +17,12 @@ interface Test {
   correctOutput: string;
 }
 
+interface Submission {
+  id: string;
+  verdict: string;
+  time: string;
+}
+
 type VerdictState =
   | { status: 'idle' }
   | { status: 'running' }
@@ -49,8 +55,15 @@ export default function Problem() {
   const [loadingProblem, setLoadingProblem] = useState(true);
   const [verdict, setVerdict] = useState<VerdictState>({ status: 'idle' });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
   const codeRef = useRef<string>(DEFAULT_CODE);
+
+  const fetchSubmissions = useCallback(async () => {
+    if (!id || !user) return;
+    const res = await api.get<Submission[]>(`/view-submissions?problemId=${id}&userId=${user.id}`, token);
+    if (res.ok) setSubmissions(res.data);
+  }, [id, user, token]);
 
   const closeDialog = useCallback(() => {
     if (verdict.status === 'running') return;
@@ -79,7 +92,8 @@ export default function Problem() {
       if (tRes.ok) setTests(tRes.data);
       setLoadingProblem(false);
     });
-  }, [id, token, navigate]);
+    fetchSubmissions();
+  }, [id, token, navigate, fetchSubmissions]);
 
   const handleSubmit = async () => {
     if (!id || !user) return;
@@ -120,6 +134,9 @@ export default function Problem() {
     } else {
       setVerdict({ status: 'error', message });
     }
+
+    // Refresh submissions list after judging completes
+    fetchSubmissions();
   };
 
   const handleSubmitClick = () => {
@@ -186,6 +203,27 @@ export default function Problem() {
                 </div>
               </div>
             )}
+
+            {/* Submissions history */}
+            <div className="px-5 py-4 border-t border-white/20 mt-auto">
+              <p className="font-mono text-xs text-white/40 tracking-widest mb-3">MY SUBMISSIONS</p>
+              {submissions.length === 0 ? (
+                <p className="font-mono text-xs text-white/20">No submissions yet.</p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {submissions.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between border border-white/10 px-3 py-2">
+                      <span className={`font-mono text-xs font-bold ${verdictColor(s.verdict)}`}>
+                        {s.verdict.toUpperCase()}
+                      </span>
+                      <span className="font-mono text-xs text-white/30">
+                        {new Date(s.time).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── RIGHT: Editor + verdict ── */}
@@ -331,5 +369,16 @@ function IOBlock({ label, value, accent }: { label: string; value: string; accen
       </pre>
     </div>
   );
+}
+
+function verdictColor(verdict: string): string {
+  switch (verdict) {
+    case 'Accepted': return 'text-green-400';
+    case 'Wrong Answer': return 'text-red-400';
+    case 'Compilation Error': return 'text-yellow-400';
+    case 'Time Limit Exceeded': return 'text-blue-400';
+    case 'Runtime Error': return 'text-orange-400';
+    default: return 'text-white/50';
+  }
 }
 

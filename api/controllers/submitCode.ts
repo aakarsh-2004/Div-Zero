@@ -10,6 +10,10 @@ import * as fs from "fs";
 const DOCKER_IMAGE = "frolvlad/alpine-gxx";
 const EXECUTION_TIMEOUT_MS = 10_000;
 
+async function saveSubmission(userId: string, problemId: string, verdict: string) {
+  await prisma.submission.create({ data: { userId, problemId, verdict } });
+}
+
 export const submitCode = async (req: BunRequest) => {
   const isAuthenticated = await authenticateUser(req);
   if (!isAuthenticated) {
@@ -43,14 +47,15 @@ export const submitCode = async (req: BunRequest) => {
       await $`sudo docker run --rm -v ${workDir}:/code:z ${DOCKER_IMAGE} sh -c "g++ /code/main.cpp -o /code/main && chmod +x /code/main"`.quiet();
 
     if (compile.exitCode !== 0) {
+      await saveSubmission(body.userId, body.problemId, "Compilation Error");
       return Response.json({
         message: "Compilation Error",
         errorDetails: compile.stderr.toString(),
       });
     }
 
-    for (let i = 0; i < tests.length; i++) {
-      await Bun.write(path.join(workDir, `input_${i}.txt`), tests[i].input);
+    for (const [i, test] of tests.entries()) {
+      await Bun.write(path.join(workDir, `input_${i}.txt`), test.input);
     }
 
     const timeoutSecs = Math.floor(EXECUTION_TIMEOUT_MS / 1000);
@@ -63,14 +68,14 @@ export const submitCode = async (req: BunRequest) => {
 
     await $`sudo docker run --rm -i --network none --memory 256m --cpus 0.5 -v ${workDir}:/code:z ${DOCKER_IMAGE} sh -c ${shellScript}`.quiet();
 
-    for (let i = 0; i < tests.length; i++) {
-      const test = tests[i];
+    for (const [i, test] of tests.entries()) {
       const exitCode = parseInt(
         (await Bun.file(path.join(workDir, `exit_${i}.txt`)).text()).trim(),
         10,
       );
 
       if (exitCode === 124) {
+        await saveSubmission(body.userId, body.problemId, "Time Limit Exceeded");
         return Response.json({
           message: `Time Limit Exceeded on test ${test.id}`,
         });
@@ -78,6 +83,7 @@ export const submitCode = async (req: BunRequest) => {
 
       if (exitCode !== 0) {
         const stderr = (await Bun.file(path.join(workDir, `stderr_${i}.txt`)).text()).trim();
+        await saveSubmission(body.userId, body.problemId, "Runtime Error");
         return Response.json({
           message: `Runtime Error on test ${test.id}`,
           exitCode,
@@ -91,6 +97,7 @@ export const submitCode = async (req: BunRequest) => {
       const cleanExpectedOutput = test.correctOutput.trim();
 
       if (cleanUserOutput !== cleanExpectedOutput) {
+        await saveSubmission(body.userId, body.problemId, "Wrong Answer");
         return Response.json({
           message: `Failed on test ${test.id} (Wrong Answer)`,
           input: test.input,
@@ -100,6 +107,7 @@ export const submitCode = async (req: BunRequest) => {
       }
     }
 
+    await saveSubmission(body.userId, body.problemId, "Accepted");
     return Response.json({
       message: "Accepted",
       status: "All tests passed!",

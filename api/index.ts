@@ -7,6 +7,7 @@ import { getUser } from "./controllers/getUser";
 import { signin } from "./controllers/signin";
 import { signup } from "./controllers/signup";
 import { submitCode } from "./controllers/submitCode";
+import { getSubmissions } from "./controllers/getSubmissions";
 import { withCors, preflight } from "./middlewares/cors";
 
 const server = Bun.serve({
@@ -46,6 +47,10 @@ const server = Bun.serve({
         },
         "/api/view-tests": {
             GET: async (req) => withCors(await getTests(req)),
+            OPTIONS: () => preflight(),
+        },
+        "/api/view-submissions": {
+            GET: async (req) => withCors(await getSubmissions(req)),
             OPTIONS: () => preflight(),
         },
     },
