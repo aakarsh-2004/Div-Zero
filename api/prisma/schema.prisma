@@ -1,0 +1,50 @@
+generator client {
+  provider   = "prisma-client"
+  output     = "./generated"
+  engineType = "client"
+  runtime    = "bun"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String       @id @unique @default(uuid())
+  name        String
+  username    String       @unique
+  password    String
+  role        Roles        @default(USER)
+  submissions Submission[]
+}
+
+model Problem {
+  id          String       @id @unique @default(cuid())
+  title       String
+  description String
+  tests       Test[]
+  submissions Submission[]
+}
+
+model Submission {
+  id        String   @id @unique @default(cuid())
+  time      DateTime @default(now())
+  userId    String
+  problemId String
+  user      User     @relation(fields: [userId], references: [id])
+  problem   Problem  @relation(fields: [problemId], references: [id])
+  verdict   String
+}
+
+model Test {
+  id            String  @id @unique @default(cuid())
+  problemId     String
+  input         String
+  correctOutput String
+  problem       Problem @relation(fields: [problemId], references: [id])
+}
+
+enum Roles {
+  ADMIN
+  USER
+}
