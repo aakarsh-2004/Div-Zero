@@ -35,7 +35,7 @@ export const submitCode = async (req: BunRequest) => {
       },
     });
 
-    const compile = await $`cmd /c "g++ .\\c++\\main.cpp -o .\\c++\\main.exe"`.quiet();
+    const compile = await $`g++ ./c++/main.cpp -o ./c++/main`.quiet();
 
     if (compile.exitCode !== 0) {
       return Response.json({
@@ -45,9 +45,9 @@ export const submitCode = async (req: BunRequest) => {
     }
 
     for (const test of tests) {
-      await Bun.write(".\\c++\\input.txt", test.input);
+      await Bun.write("./c++/input.txt", test.input);
 
-      const runResult = await $`cmd /c ".\\c++\\main.exe < .\\c++\\input.txt > .\\c++\\output.txt"`.quiet();
+      const runResult = await $`./c++/main < ./c++/input.txt > ./c++/output.txt`.quiet();
 
       if (runResult.exitCode !== 0) {
         return Response.json({
@@ -56,7 +56,7 @@ export const submitCode = async (req: BunRequest) => {
         });
       }
 
-      const userOutput = await Bun.file(".\\c++\\output.txt").text();
+      const userOutput = await Bun.file("./c++/output.txt").text();
 
       const cleanUserOutput = userOutput.trim();
       const cleanExpectedOutput = test.correctOutput.trim();
