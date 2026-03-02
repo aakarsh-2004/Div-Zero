@@ -45,9 +45,13 @@ export const submitCode = async (req: BunRequest) => {
     }
 
     for (const test of tests) {
-      await Bun.write("./c++/input.txt", test.input);
+      const runResult = Bun.spawn(["./c++/main"], {
+        stdin: new TextEncoder().encode(test.input),
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
-      const runResult = await $`./c++/main < ./c++/input.txt > ./c++/output.txt`.quiet();
+      await runResult.exited;
 
       if (runResult.exitCode !== 0) {
         return Response.json({
@@ -56,9 +60,7 @@ export const submitCode = async (req: BunRequest) => {
         });
       }
 
-      const userOutput = await Bun.file("./c++/output.txt").text();
-
-      const cleanUserOutput = userOutput.trim();
+      const cleanUserOutput = (await new Response(runResult.stdout).text()).trim();
       const cleanExpectedOutput = test.correctOutput.trim();
 
       // Wrong Answer (WA)
