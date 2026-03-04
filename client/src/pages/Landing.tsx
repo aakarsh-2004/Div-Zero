@@ -71,7 +71,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-white/10 px-4 py-4 max-w-7xl mx-auto w-full">
-        <p className="font-mono text-xs text-white/20">DIV/ZERO — built with Bun + React by Aakarsh</p>
+        <p className="font-mono text-xs text-white/50">DIV/ZERO — built with Bun + React by<span className='text-white/80 underline-offset-3 underline'> <a href="https://www.linkedin.com/in/aakarshbe" target='_blank'>Aakarsh</a></span></p>
       </footer>
     </div>
   );
